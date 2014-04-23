@@ -1,0 +1,73 @@
+#!/bin/sh -e
+
+if [ -n "$1" ]; then
+	IFACE="$1"
+else
+	IFACE=`ip route | awk '/^default/ { print $5; exit; }'`
+fi
+
+if [ -z "${IFACE}" ]; then
+	/bin/echo -n "network: disabled"
+	exit 1
+
+else
+	CACHE="/tmp/screen.${USER}.${STY}.${IFACE}.network.cache"
+
+	if [ -f "${CACHE}" ]; then
+		. ${CACHE}
+	fi
+
+	awk -v iface=${IFACE} -v recv1=${RECV1} -v sent1=${SENT1} -v date1=${DATE1} '
+		BEGIN {
+			m_iface = sprintf("%s:", iface);
+			delta   = 0;
+
+			if (recv1 == "") recv1 = 0;
+			if (sent1 == "") sent1 = 0;
+			if (date1 == "") date1 = 0;
+		}
+
+		{
+			if (match($0, m_iface)) {
+				recv2 = $2;
+				sent2 = $10;
+				date2 = systime();
+				delta = date2 - date1;
+
+				if (delta == 0) {
+					next;
+
+				} else if (recv1 == 0 || sent1 == 0 || date1 == 0) {
+					delta = 0;
+					next;
+				}
+
+				recv_rate = (recv2 - recv1) / delta;
+				sent_rate = (sent2 - sent1) / delta;
+			}
+		}
+
+		END {
+			printf("IFACE=%s\nRECV1=%d\nSENT1=%d\nDATE1=%d\n", iface, recv2, sent2, date2);
+
+			if (delta == 0) {
+				recv_rate_str = "0 B/s";
+				sent_rate_str = "0 B/s";
+
+			} else {
+				if      (recv_rate < 1024)      recv_rate_str = sprintf("%.1f B/s",  recv_rate);
+				else if (recv_rate < 1024*1024) recv_rate_str = sprintf("%.1f kB/s", recv_rate/1024);
+				else                            recv_rate_str = sprintf("%.1f MB/s", recv_rate/1024/1024);
+
+				if      (sent_rate < 1024)      sent_rate_str = sprintf("%.1f B/s",  sent_rate);
+				else if (sent_rate < 1024*1024) sent_rate_str = sprintf("%.1f kB/s", sent_rate/1024);
+				else                            sent_rate_str = sprintf("%.1f MB/s", sent_rate/1024/1024);
+			}
+			
+			printf("RECVRATE=\"%s\"\nSENTRATE=\"%s\"\n", recv_rate_str, sent_rate_str);
+		}' /proc/net/dev >${CACHE}
+
+	. ${CACHE}
+	/bin/echo -n "${IFACE}: in:${RECVRATE} out:${SENTRATE}"
+fi
+
