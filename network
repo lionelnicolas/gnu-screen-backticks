@@ -11,7 +11,11 @@ if [ -z "${IFACE}" ]; then
 	exit 1
 
 else
-	CACHE="/tmp/screen.${USER}.${STY}.${IFACE}.network.cache"
+	if [ ! -d "${HOME}/.cache/screen" ]; then
+		mkdir -p ${HOME}/.cache/screen
+	fi
+
+	CACHE="${HOME}/.cache/screen/network.cache.${IFACE}.${STY}.dat"
 
 	if [ -f "${CACHE}" ]; then
 		. ${CACHE}
