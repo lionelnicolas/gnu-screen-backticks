@@ -1,0 +1,51 @@
+#!/bin/sh -e
+
+if [ -n "$1" ]; then
+	IFACE="$1"
+else
+	IFACE=`awk -F'[ :]+' '/:/ { print $2; exit; }' /proc/net/wireless`
+fi
+
+if [ -z "${IFACE}" ]; then
+	/bin/echo -n "wifi: disabled"
+	exit 1
+
+elif ! which iwconfig >/dev/null 2>&1; then
+	/bin/echo -n "wifi: iwconfig not found"
+	exit 2
+
+else
+	iwconfig ${IFACE} 2>/dev/null | awk -v iface=${IFACE} '
+		BEGIN {
+			bitrate="";
+			quality="";
+			essid="";
+		}
+		{
+			if (match($0, /Bit Rate=.*\/s/)) {
+				pattern = substr($0, RSTART, RLENGTH);
+				sub(/Bit Rate=/, "", pattern);
+				bitrate = sprintf("%s", pattern);
+			}
+			else if (match($0, /Link Quality=[^ \t]+/)) {
+				pattern = substr($0, RSTART, RLENGTH);
+				sub(/Link Quality=/, "", pattern);
+				split(pattern, s, "/");
+				quality = sprintf("%.0f%%", 100*s[1]/s[2]);
+			}
+			else if (match($0, /ESSID:"[^"]+/)) {
+				pattern = substr($0, RSTART, RLENGTH);
+				sub(/ESSID:"/, "", pattern);
+				split(pattern, s, "/");
+				essid = sprintf("%s", pattern);
+			}
+		}
+		END {
+			if (bitrate != "" && quality != "" && essid != "") {
+				printf("%s: %s at %s (%s)", iface, essid, bitrate, quality);
+			} else {
+				printf("%s: not connected", iface);
+			}
+		}'
+fi
+
