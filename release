@@ -1,0 +1,21 @@
+#!/bin/sh -e
+
+RELEASE="system unknown"
+
+if which lsb_release >/dev/null 2>&1; then
+	RELEASE=`lsb_release -sd`
+
+elif [ -f /etc/os-release ]; then
+	. /etc/os-release
+	RELEASE="${PRETTY_NAME}"
+
+elif [ -f /etc/system-release ]; then
+	RELEASE=`cat /etc/system-release`
+
+elif [ -f /etc/lsb-release ]; then
+	. /etc/lsb-release
+	RELEASE="${DISTRIB_DESCRIPTION}"
+fi
+
+/bin/echo -n "${RELEASE}"
+
