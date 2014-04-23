@@ -1,0 +1,4 @@
+#!/bin/sh -e
+
+/bin/echo -n "`whoami`@`hostname -f`"
+
