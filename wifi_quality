@@ -15,7 +15,7 @@ elif ! which iwconfig >/dev/null 2>&1; then
 	exit 2
 
 else
-	iwconfig ${IFACE} 2>/dev/null | awk -v iface=${IFACE} '
+	iwconfig ${IFACE} 2>/dev/null | awk -v iface=${IFACE} -v batch=${BATCH} '
 		BEGIN {
 			bitrate="";
 			quality="";
@@ -31,7 +31,7 @@ else
 				pattern = substr($0, RSTART, RLENGTH);
 				sub(/Link Quality=/, "", pattern);
 				split(pattern, s, "/");
-				quality = sprintf("%.0f%%", 100*s[1]/s[2]);
+				quality = sprintf("%.0f", 100*s[1]/s[2]);
 			}
 			else if (match($0, /ESSID:"[^"]+/)) {
 				pattern = substr($0, RSTART, RLENGTH);
@@ -41,8 +41,10 @@ else
 			}
 		}
 		END {
-			if (bitrate != "" && quality != "" && essid != "") {
-				printf("%s: %s at %s (%s)", iface, essid, bitrate, quality);
+			if (batch == "yes") {
+				printf("iface=\"%s\"\nessid=\"%s\"\nbitrate=\"%s\"\nquality=\"%s\"\n", iface, essid, bitrate, quality);
+			} else if (bitrate != "" && quality != "" && essid != "") {
+				printf("%s: %s at %s (%s%%)", iface, essid, bitrate, quality);
 			} else {
 				printf("%s: not connected", iface);
 			}
